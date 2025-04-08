@@ -1,7 +1,7 @@
-# ConThereum: Declarative Implementation
+# Conthereum: Declarative Implementation
 
 ## Project Overview
-ConThereum’s Declarative implementation used a minimal declarative approach to find one _suboptimal_ (near-optimal 
+Conthereum's Declarative implementation used a minimal declarative approach to find one _suboptimal_ (near-optimal 
 solution) and in this implementation instead of finding the optimal solution, the focus is minimizing the _walltime_
 (the time that it takes for the scheduler to find the solution), while the _makespan_ (the time that suboptimal 
 schedule takes to execute in all the computers) will be short enough to make it practically beneficial to replace 
@@ -10,7 +10,7 @@ the parallel solution with.
 The final result is to use this scheduling solution to minimize execution time and manage process conflicts in EVM. 
 This approach improves the scheduling of Ethereum transactions across multiple resources.
 
-This project is part of the ConThereum initiative, which explores transaction optimization techniques for Ethereum Virtual Machine (EVM) environments. 
+This project is part of the Conthereum initiative, which explores transaction optimization techniques for Ethereum Virtual Machine (EVM) environments. 
 This project is a Maven-based Java it.unitn.emvscheduling.greedy.application. It contains a main class, `Main.java`, to execute the benchmarks.
 
 ## License
@@ -151,6 +151,60 @@ The first non-bold items are repetitions of the input file to distinguish the in
 * Use the file mode of the execution and use a dummy it.unitn.emvscheduling.greedy.data as the first line, since it will take longer to 
   instantiations and setups and from line two on, it significantly reduces the wall time, like from millisecond to 
   nanosecond 
+
+
+
+# Speedup Analysis Visualization
+
+This tool generates error bar diagrams to visualize speedup measurements for Ethereum transaction executions across different core counts and conflict rates.
+
+## Input Data Format
+
+The tool expects an Excel file containing the following data columns:
+- `cores`: Number of cores used (1-8)
+- `proposerSpeedup`: Mean speedup values for proposer role
+- `proposerStdDev`: Standard deviation for proposer speedup
+- `attestorSpeedup`: Mean speedup values for attestor role
+- `attestorStdDev`: Standard deviation for attestor speedup
+
+The data should be organized by conflict rates (15%, 25%, 35%, 45%).
+
+## Generated Diagrams
+
+The tool produces error bar diagrams showing:
+- Mean speedup values (filled markers)
+- Error bars extending ±1 standard deviation from the mean
+- Linear speedup reference line
+- Separate diagrams for each conflict rate
+- A combined diagram showing all conflict rates
+
+### Statistical Representation
+- Each data point represents the mean speedup (\(\mu\)) for a specific core count
+- Error bars show the interval \([\mu - \sigma, \mu + \sigma]\), where \(\sigma\) is the standard deviation
+- The linear speedup line represents ideal scaling behavior
+
+## Output Location
+
+Generated diagrams are saved in the `target/charts` directory with the following naming convention:
+- Individual conflict rate diagrams: `speedup_chart_Xpercent.png` (where X is the conflict percentage)
+- Combined diagram: `speedup_chart_general.png`
+
+## Usage
+
+1. Ensure your input Excel file is properly formatted with the required columns
+2. Run the visualization tool
+3. Find the generated diagrams in the `target/charts` directory
+
+## Technical Details
+
+The diagrams are generated using JFreeChart with the following specifications:
+- Mean points are represented by filled markers (8px radius)
+- Error bars use 1.5pt line width
+- Trend lines use 2.5pt line width
+- Colors:
+  - Proposer: Rich blue (RGB: 0,114,189)
+  - Attestor: Deep orange (RGB: 255,140,0)
+  - Linear speedup: Gray dashed line
 
 
 ## Contact
