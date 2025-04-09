@@ -5,6 +5,8 @@ import it.unitn.emvscheduling.greedy.domain.ExecutionFacts;
 import it.unitn.emvscheduling.greedy.domain.ExecutionOutput;
 import it.unitn.emvscheduling.greedy.domain.ExecutionSettings;
 import it.unitn.emvscheduling.greedy.solver.DispatcherSolver;
+import it.unitn.emvscheduling.greedy.solver.OptimizedDispatcherSolver;
+import it.unitn.emvscheduling.greedy.solver.Solver;
 import it.unitn.emvscheduling.greedy.solver.Strategy;
 
 import java.io.*;
@@ -28,8 +30,8 @@ public class FileBasedExecutor {
             "solverWallTime(ms), makespan(ms), parallelTimeSum(ms), " +
             "serialTimeHorizon(ms), solverStatus, speedupFactor, currentTimestamp";
 
-    public static void executeUsingFiles() {
-        DispatcherSolver solver;
+    public static void executeUsingFiles(boolean isNewOptimalSolution) {
+        Solver solver;
 
         // Use the updated method to read inputs from "input.csv"
         List<List<Integer>> inputs = readInputsFromCSV(inputFile);
@@ -57,7 +59,7 @@ public class FileBasedExecutor {
 
                     ExecutionFacts facts = DataGenerator.getBenchmark(randomSeed, input.get(i++), input.get(i++),
                             input.get(i++), input.get(i++), input.get(i++), input.get(i++));
-                    solver = new DispatcherSolver();
+                    solver = isNewOptimalSolution? new OptimizedDispatcherSolver() : new DispatcherSolver();
                     Strategy.ProcessSortType processSortType = Strategy.ProcessSortType.getByValue(input.get(i++));
                     int looseReviewRound = input.get(i++);
                     Strategy strategy = new Strategy(processSortType, looseReviewRound);
@@ -95,21 +97,21 @@ public class FileBasedExecutor {
     }
 
     public static String getOutputLine(Integer no, Integer groupId, Integer randomSeed, Integer numberOfWorkers,
-                                       Integer maxSolverExecutionTimeInSeconds,
-                                       Integer processCount, Integer processExecutionTimeMin,
-                                       Integer processExecutionTimeMax, Integer computerCount,
-                                       Integer conflictPercentage, Integer timeWeight, Integer processSortType,
-                                       Integer looseReviewRound,
-                                       Double solverWallTimeMs,
-                                       Integer makeSpan, Long serialTimeHorizon,
-                                       String solverStatus) {
-        Double parallelTimeSum = solverWallTimeMs + makeSpan; // Ensure proper division
-        Double speedUpFactor = serialTimeHorizon / parallelTimeSum;
+                                     Integer maxSolverExecutionTimeInSeconds,
+                                     Integer processCount, Integer processExecutionTimeMin,
+                                     Integer processExecutionTimeMax, Integer computerCount,
+                                     Integer conflictPercentage, Integer timeWeight, Integer processSortType,
+                                     Integer looseReviewRound,
+                                     Double solverWallTimeMs,
+                                     Integer makeSpan, Long serialTimeHorizon,
+                                     String solverStatus) {
+        // Speedup is serial time divided by parallel time (makespan)
+        Double speedUpFactor = (double)serialTimeHorizon / makeSpan;
 
         String line = String.format("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.6f,%d,%.6f,%d,%s,%.6f",
                 no, groupId, randomSeed, numberOfWorkers, maxSolverExecutionTimeInSeconds, processCount,
                 processExecutionTimeMin, processExecutionTimeMax, computerCount, conflictPercentage,
-                timeWeight, processSortType, looseReviewRound, solverWallTimeMs, makeSpan, parallelTimeSum,
+                timeWeight, processSortType, looseReviewRound, solverWallTimeMs, makeSpan, solverWallTimeMs + makeSpan,
                 serialTimeHorizon,
                 solverStatus, speedUpFactor
         );

@@ -6,7 +6,7 @@ import it.unitn.emvscheduling.greedy.domain.ExecutionSettings;
 import it.unitn.emvscheduling.greedy.domain.Process;
 import it.unitn.emvscheduling.greedy.domain.solver.ComputingPlan;
 
-public class DispatcherSolver {
+public class DispatcherSolver implements Solver {
     public ExecutionOutput solve(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
         if (facts.isProposerMode) {
             return solveProposer(facts, settings, strategy);
@@ -15,7 +15,7 @@ public class DispatcherSolver {
         }
     }
 
-    public ExecutionOutput solveProposer(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
+    private ExecutionOutput solveProposer(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
 
         long startSystemTimeNanoSecond = System.nanoTime();
 
@@ -83,7 +83,7 @@ public class DispatcherSolver {
     }
 
 
-    public ExecutionOutput solveAttestor(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
+    private ExecutionOutput solveAttestor(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
 
         long startSystemTimeNanoSecond = System.nanoTime();
 
@@ -154,7 +154,7 @@ public class DispatcherSolver {
         solverOutput.horizon = horizon;
         solverOutput.scheduleMakespan = computingPlan.getScheduleMakespan();
         long endSystemTimeNanoSecond = System.nanoTime();
-        solverOutput.wallTimeInMs = (endSystemTimeNanoSecond - startSystemTimeNanoSecond) / 1000000.0;
+        solverOutput.wallTimeInMs = (endSystemTimeNanoSecond - startSystemTimeNanoSecond) / 1_000_000.0;
         solverOutput.resultStatus = "possible";
         solverOutput.processes = facts.processes;
         //System.out.println(computingPlan);

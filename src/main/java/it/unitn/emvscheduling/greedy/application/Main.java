@@ -8,7 +8,9 @@ public class Main {
         if (args[0].equals("args"))
             executeUsingArgs(args);
         else if (args[0].equals("files"))
-            executeUsingFiles(args);
+            executeUsingFiles(args, false);
+        else if (args[0].equals("files-op"))
+            executeUsingFiles(args, true);
         else
             System.out.println("Two options of 'args' or 'file' are supported");
     }
@@ -34,12 +36,12 @@ public class Main {
                 , processCount, processExecutionTimeMin, processExecutionTimeMax, computerCount, conflictPercentage, timeWeight);
     }
 
-    private static void executeUsingFiles(String[] args) {
+    private static void executeUsingFiles(String[] args, boolean isNewOptimalSolution) {
         if (args.length != 1) {
             //todo you can include file name or postfix and ...
             System.out.println("Usage: file");
             System.exit(1);
         }
-        FileBasedExecutor.executeUsingFiles();
+        FileBasedExecutor.executeUsingFiles(isNewOptimalSolution);
     }
 }

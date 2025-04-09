@@ -12,7 +12,7 @@ import java.util.List;
  * ComputerPlan for all the computers
  */
 public class ComputingPlan {
-    private List<ComputerPlan> computerPlanList;// in each index, there is the computerPlan of that computer id
+    public List<ComputerPlan> computerPlanList;// in each index, there is the computerPlan of that computer id
 
 //    private ExecutionFacts facts;
 
