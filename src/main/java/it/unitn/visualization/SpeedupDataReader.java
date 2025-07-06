@@ -60,10 +60,14 @@ public class SpeedupDataReader {
     }
 
     public static Map<Integer, SpeedupData> readSpeedupData() throws IOException {
+        return readSpeedupData("speedup-auto.xlsx");
+    }
+    
+    public static Map<Integer, SpeedupData> readSpeedupData(String filename) throws IOException {
         Map<Integer, List<double[]>> conflictData = new HashMap<>();
         
-        try (InputStream is = SpeedupDataReader.class.getClassLoader().getResourceAsStream("speedups.xlsx")) {
-            if (is == null) throw new IOException("Could not find speedups.xlsx in resources directory");
+        try (InputStream is = SpeedupDataReader.class.getClassLoader().getResourceAsStream(filename)) {
+            if (is == null) throw new IOException("Could not find " + filename + " in resources directory");
             
             Workbook workbook = new XSSFWorkbook(is);
             Sheet sheet = workbook.getSheetAt(0);
@@ -82,8 +86,12 @@ public class SpeedupDataReader {
                 int conflictPercentage = (int) getCellNumericValue(conflictCell);
                 if (conflictPercentage <= 0) continue;
                 
-                double[] rowData = new double[18]; // 9 pairs of proposer/attestor values
-                for (int i = 0; i < 18; i++) {
+                // Determine number of core pairs based on file format
+                int maxCol = row.getLastCellNum();
+                int numCorePairs = (maxCol - FIRST_CORE_DATA_COL) / 2;
+                double[] rowData = new double[numCorePairs * 2]; // Pairs of proposer/attestor values
+                
+                for (int i = 0; i < numCorePairs * 2; i++) {
                     Cell cell = row.getCell(FIRST_CORE_DATA_COL + i);
                     rowData[i] = getCellNumericValue(cell);
                 }
@@ -98,17 +106,18 @@ public class SpeedupDataReader {
         
         for (Map.Entry<Integer, List<double[]>> conflictEntry : conflictData.entrySet()) {
             int conflictPercentage = conflictEntry.getKey();
-            SpeedupData speedupData = new SpeedupData(9);
+            int numCores = conflictEntry.getValue().get(0).length / 2; // Number of core pairs
+            SpeedupData speedupData = new SpeedupData(numCores);
             
-            // Process each core count (2-9)
-            for (int coreIdx = 1; coreIdx < 9; coreIdx++) {
+            // Process each core count (1 to numCores)
+            for (int coreIdx = 0; coreIdx < numCores; coreIdx++) {
                 List<Double> proposerValues = new ArrayList<>();
                 List<Double> attestorValues = new ArrayList<>();
                 
                 // Collect all measurements for this core count
                 for (double[] measurement : conflictEntry.getValue()) {
-                    proposerValues.add(measurement[(coreIdx-1) * 2]);
-                    attestorValues.add(measurement[(coreIdx-1) * 2 + 1]);
+                    proposerValues.add(measurement[coreIdx * 2]);
+                    attestorValues.add(measurement[coreIdx * 2 + 1]);
                 }
                 
                 speedupData.cores[coreIdx] = coreIdx + 1;
@@ -125,17 +134,25 @@ public class SpeedupDataReader {
     }
     
     public static SpeedupData combineData(Map<Integer, SpeedupData> allData) {
-        SpeedupData combined = new SpeedupData(9);
+        if (allData.isEmpty()) {
+            return new SpeedupData(1);
+        }
         
-        // Process each core count (2-9)
-        for (int coreIdx = 1; coreIdx < 9; coreIdx++) {
+        // Get the number of cores from the first data entry
+        int numCores = allData.values().iterator().next().cores.length;
+        SpeedupData combined = new SpeedupData(numCores);
+        
+        // Process each core count (1 to numCores)
+        for (int coreIdx = 0; coreIdx < numCores; coreIdx++) {
             List<Double> proposerValues = new ArrayList<>();
             List<Double> attestorValues = new ArrayList<>();
             
             // Collect values from all conflict percentages
             for (SpeedupData data : allData.values()) {
-                proposerValues.add(data.proposerSpeedup[coreIdx]);
-                attestorValues.add(data.attestorSpeedup[coreIdx]);
+                if (coreIdx < data.cores.length) {
+                    proposerValues.add(data.proposerSpeedup[coreIdx]);
+                    attestorValues.add(data.attestorSpeedup[coreIdx]);
+                }
             }
             
             combined.cores[coreIdx] = coreIdx + 1;

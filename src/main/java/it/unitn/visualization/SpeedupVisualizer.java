@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Arrays;
 import java.awt.geom.Rectangle2D;
 
 public class SpeedupVisualizer {
@@ -103,9 +104,15 @@ public class SpeedupVisualizer {
         domainAxis.setTickLabelsVisible(true);
         rangeAxis.setTickLabelsVisible(true);
         
-        // Set axis ranges
-        domainAxis.setRange(1, 9);
-        rangeAxis.setRange(1, 9);
+        // Set axis ranges dynamically based on data
+        double maxCore = data.cores[data.cores.length - 1];
+        double maxSpeedup = Math.max(
+            Arrays.stream(data.proposerSpeedup).max().orElse(1.0),
+            Arrays.stream(data.attestorSpeedup).max().orElse(1.0)
+        );
+        
+        domainAxis.setRange(1, maxCore);
+        rangeAxis.setRange(1, Math.max(maxSpeedup + 1, maxCore));
         
         // Set tick marks visible
         domainAxis.setTickMarksVisible(true);
@@ -204,7 +211,15 @@ public class SpeedupVisualizer {
 
     public static void main(String[] args) {
         try {
-            Map<Integer, SpeedupDataReader.SpeedupData> allData = SpeedupDataReader.readSpeedupData();
+            // Try to read from speedup-auto.xlsx first, fallback to speedups.xlsx
+            Map<Integer, SpeedupDataReader.SpeedupData> allData;
+            try {
+                allData = SpeedupDataReader.readSpeedupData("speedup-auto.xlsx");
+                System.out.println("Using speedup-auto.xlsx for visualization");
+            } catch (IOException e) {
+                System.out.println("speedup-auto.xlsx not found, falling back to speedups.xlsx");
+                allData = SpeedupDataReader.readSpeedupData("speedups.xlsx");
+            }
             
             // Create individual charts for each conflict percentage
             int[] conflictPercentages = {15, 25, 35, 45};
