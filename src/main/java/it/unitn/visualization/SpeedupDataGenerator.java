@@ -21,7 +21,7 @@ public class SpeedupDataGenerator {
     
     // Configuration parameters
     private static final int[] CORE_COUNTS = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
-    private static final int[] CONFLICT_PERCENTAGES = {15, 25, 35, 45};
+    private static final int[] CONFLICT_PERCENTAGES = {0, 5, 10, 15, 25, 35, 45};
     private static final int[] PROCESS_COUNTS = {50, 100, 150, 200};
     private static final int PROCESS_EXECUTION_TIME_MIN = 5;
     private static final int PROCESS_EXECUTION_TIME_MAX = 10;
