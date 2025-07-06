@@ -18,7 +18,7 @@ public class ExecutionFacts {
     public List<UnorderedPair> conflictingProcesses;
     public Integer timeWeight;//out of 100
     //proposer or attestor: for attestors do not change the order of conflicting transactions
-    public Boolean isProposerMode = true;
+    public Boolean isProposerMode = false;
 
     //dependant variable
 //    private Integer costWeight;

@@ -65,8 +65,9 @@ public class ComputingPlan {
         //choosing start time
         int startTime = firstFreeTime;
         for (Process cProcess : process.conflictingProcesses) {
-            if (cProcess.computer != null && !cProcess.computer.equals(selectedComputerPlan.computer)) {// is already assigned
-                if (startTime >= cProcess.startTime && startTime <= cProcess.endTime) {
+            if (cProcess.computer != null && !cProcess.computer.equals(selectedComputerPlan.computer)) {
+                // Check for all possible overlap scenarios
+                if (startTime < cProcess.endTime && (startTime + process.executionTime) > cProcess.startTime) {
                     startTime = cProcess.endTime;
                 }
             }

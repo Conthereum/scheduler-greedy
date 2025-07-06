@@ -11,18 +11,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class OptimizedDispatcherSolver implements Solver {
-    private static class ProcessGroup {
-        List<Process> processes;
-        int totalDuration;
-        Set<Process> conflictingProcesses;
-
-        ProcessGroup() {
-            processes = new ArrayList<>();
-            totalDuration = 0;
-            conflictingProcesses = new HashSet<>();
-        }
-    }
-
     public ExecutionOutput solve(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
         if (facts.isProposerMode) {
             return solveProposer(facts, settings, strategy);
@@ -36,28 +24,49 @@ public class OptimizedDispatcherSolver implements Solver {
         ExecutionOutput output = new ExecutionOutput();
         ComputingPlan plan = new ComputingPlan(facts);
 
-        // Phase 1: Loose Assignment - Try to assign processes without conflicts
-        List<Process> unassigned = new ArrayList<>(facts.processes);
-        int numCores = facts.computers.size();
-        
         // Sort processes by execution time (longest first)
-        unassigned.sort((a, b) -> Integer.compare(b.executionTime, a.executionTime));
-        
-        // Try multiple rounds of loose assignment
-        for (int round = 0; round < strategy.looseReviewRound; round++) {
-            List<Process> remaining = new ArrayList<>();
-            for (Process p : unassigned) {
-                if (!assignLoosely(p, plan, numCores)) {
-                    remaining.add(p);
+        facts.sortProcesses(strategy.processSortType);
+
+        // Phase 1: Loose Assignment - Try to assign processes without conflicts
+        if (strategy.assignmentType.equals(Strategy.AssignmentType.LOOSE)) {
+            for (int round = 0; round < strategy.looseReviewRound; round++) {
+                int unassignedProcesses = 0;
+                for (Process process : facts.processes) {
+                    if (process.computer == null) {
+                        boolean couldAssign = false;
+                        if (process.conflictingProcesses.isEmpty()) {
+                            couldAssign = assignLoosely(process, plan);
+                        } else {
+                            boolean allPreviousConflictsAssigned = true;
+                            for (Process conflict : process.conflictingProcesses) {
+                                if (conflict.processId < process.processId && conflict.computer == null) {
+                                    allPreviousConflictsAssigned = false;
+                                    break;
+                                }
+                            }
+                            if (allPreviousConflictsAssigned) {
+                                couldAssign = assignLoosely(process, plan);
+                            }
+                        }
+                        if (!couldAssign) {
+                            unassignedProcesses++;
+                        }
+                    }
+                }
+                if (unassignedProcesses == 0) break;
+            }
+
+            // Phase 2: Strict Assignment for remaining processes
+            for (Process process : facts.processes) {
+                if (process.computer == null) {
+                    assignStrictly(process, plan);
                 }
             }
-            unassigned = remaining;
-            if (unassigned.isEmpty()) break;
-        }
-
-        // Phase 2: Strict Assignment - Assign remaining processes with proper timing
-        for (Process p : unassigned) {
-            assignStrictly(p, plan, numCores);
+        } else {
+            // If STRICT mode, assign all processes strictly in order
+            for (Process process : facts.processes) {
+                assignStrictly(process, plan);
+            }
         }
 
         output.horizon = facts.processes.stream().mapToLong(p -> p.executionTime).sum();
@@ -65,156 +74,129 @@ public class OptimizedDispatcherSolver implements Solver {
         output.wallTimeInMs = (System.nanoTime() - startTime) / 1_000_000.0;
         output.resultStatus = "possible";
         output.processes = facts.processes;
-        
+
         return output;
     }
 
-    private boolean assignLoosely(Process p, ComputingPlan plan, int numCores) {
-        // Find the best core that can execute this process without conflicts
-        ComputerPlan bestCore = null;
-        int minNewMakespan = Integer.MAX_VALUE;
-        int bestStartTime = 0;
+    private boolean assignLoosely(Process process, ComputingPlan plan) {
+        // Find the least loaded core
+        ComputerPlan selectedCore = null;
+        int firstFreeTime = Integer.MAX_VALUE;
         
-        // Sort cores by current load
-        List<ComputerPlan> corePlans = new ArrayList<>(plan.computerPlanList);
-        corePlans.sort(Comparator.comparingInt(cp -> cp.firstFreeTime));
-        
-        for (int i = 0; i < Math.min(numCores, corePlans.size()); i++) {
-            ComputerPlan core = corePlans.get(i);
-            
-            // Calculate earliest possible start time considering conflicts
-            int startTime = core.firstFreeTime;
-            boolean hasConflicts = false;
-            
-            // Check for conflicts with already assigned processes
-            for (Process conflict : p.conflictingProcesses) {
-                if (conflict.computer != null) {
-                    // If conflict is on same core, we can't assign here
-                    if (conflict.computer.equals(core.computer)) {
-                        hasConflicts = true;
-                        break;
-                    }
-                    // If conflict is on different core, ensure proper timing
-                    if (startTime < conflict.endTime) {
-                        startTime = conflict.endTime;
-                    }
-                }
-            }
-            
-            if (!hasConflicts) {
-                // Calculate new makespan considering all cores
-                int newMakespan = Math.max(startTime + p.executionTime,
-                    corePlans.stream().mapToInt(cp -> cp.firstFreeTime).max().orElse(0));
-                
-                if (newMakespan < minNewMakespan) {
-                    minNewMakespan = newMakespan;
-                    bestCore = core;
-                    bestStartTime = startTime;
-                }
+        for (ComputerPlan core : plan.computerPlanList) {
+            if (core.firstFreeTime < firstFreeTime) {
+                selectedCore = core;
+                firstFreeTime = core.firstFreeTime;
             }
         }
         
-        if (bestCore != null) {
-            p.computer = bestCore.computer;
-            p.startTime = bestStartTime;
-            p.endTime = bestStartTime + p.executionTime;
-            bestCore.processList.add(p);
-            bestCore.firstFreeTime = p.endTime;
-            bestCore.busyTimeSum += p.executionTime;
-            return true;
+        if (selectedCore == null) {
+            throw new RuntimeException("Could not find computer for process " + process.processId);
         }
-        
-        return false;
+
+        // Check if there are any conflicts at the start time
+        int startTime = firstFreeTime;
+        for (Process conflict : process.conflictingProcesses) {
+            if (conflict.computer != null && !conflict.computer.equals(selectedCore.computer)) {
+                if (startTime >= conflict.startTime && startTime <= conflict.endTime) {
+                    return false;
+                }
+            }
+        }
+
+        // If no conflicts, assign the process
+        process.computer = selectedCore.computer;
+        process.startTime = startTime;
+        process.endTime = startTime + process.executionTime;
+        selectedCore.processList.add(process);
+        selectedCore.firstFreeTime = process.endTime;
+        selectedCore.busyTimeSum += process.executionTime;
+        return true;
     }
 
-    private void assignStrictly(Process p, ComputingPlan plan, int numCores) {
-        // Find the best core that minimizes makespan while handling conflicts
-        ComputerPlan bestCore = null;
-        int minNewMakespan = Integer.MAX_VALUE;
-        int bestStartTime = 0;
+    private void assignStrictly(Process process, ComputingPlan plan) {
+        // Find the least loaded core
+        ComputerPlan selectedCore = null;
+        int firstFreeTime = Integer.MAX_VALUE;
         
-        // Sort cores by current load
-        List<ComputerPlan> corePlans = new ArrayList<>(plan.computerPlanList);
-        corePlans.sort(Comparator.comparingInt(cp -> cp.firstFreeTime));
-        
-        for (int i = 0; i < Math.min(numCores, corePlans.size()); i++) {
-            ComputerPlan core = corePlans.get(i);
-            
-            // Calculate earliest possible start time considering conflicts
-            int startTime = core.firstFreeTime;
-            boolean hasConflicts = false;
-            
-            // Check for conflicts with already assigned processes
-            for (Process conflict : p.conflictingProcesses) {
-                if (conflict.computer != null) {
-                    // If conflict is on same core, we can't assign here
-                    if (conflict.computer.equals(core.computer)) {
-                        hasConflicts = true;
-                        break;
-                    }
-                    // If conflict is on different core, ensure proper timing
-                    if (startTime < conflict.endTime) {
-                        startTime = conflict.endTime;
-                    }
-                }
-            }
-            
-            if (!hasConflicts) {
-                // Calculate new makespan considering all cores
-                int newMakespan = Math.max(startTime + p.executionTime,
-                    corePlans.stream().mapToInt(cp -> cp.firstFreeTime).max().orElse(0));
-                
-                if (newMakespan < minNewMakespan) {
-                    minNewMakespan = newMakespan;
-                    bestCore = core;
-                    bestStartTime = startTime;
-                }
+        for (ComputerPlan core : plan.computerPlanList) {
+            if (core.firstFreeTime < firstFreeTime) {
+                selectedCore = core;
+                firstFreeTime = core.firstFreeTime;
             }
         }
         
-        if (bestCore != null) {
-            p.computer = bestCore.computer;
-            p.startTime = bestStartTime;
-            p.endTime = bestStartTime + p.executionTime;
-            bestCore.processList.add(p);
-            bestCore.firstFreeTime = p.endTime;
-            bestCore.busyTimeSum += p.executionTime;
+        if (selectedCore == null) {
+            throw new RuntimeException("Could not find computer for process " + process.processId);
         }
+
+        // Calculate start time considering conflicts
+        int startTime = firstFreeTime;
+        for (Process conflict : process.conflictingProcesses) {
+            if (conflict.computer != null) {
+                startTime = Math.max(startTime, conflict.endTime);
+            }
+        }
+
+        // Assign the process with the calculated start time
+        process.computer = selectedCore.computer;
+        process.startTime = startTime;
+        process.endTime = startTime + process.executionTime;
+        process.idleDuration = startTime - firstFreeTime;
+        selectedCore.processList.add(process);
+        selectedCore.firstFreeTime = process.endTime;
+        selectedCore.busyTimeSum += process.executionTime;
+        selectedCore.idleTimeSum += process.idleDuration;
     }
 
     private ExecutionOutput solveAttestor(ExecutionFacts facts, ExecutionSettings settings, Strategy strategy) {
-        // Similar to proposer but with order preservation
         long startTime = System.nanoTime();
         ExecutionOutput output = new ExecutionOutput();
         ComputingPlan plan = new ComputingPlan(facts);
 
-        // Phase 1: Loose Assignment with order preservation
-        List<Process> unassigned = new ArrayList<>(facts.processes);
-        int numCores = facts.computers.size();
-        
         // Move conflicting transactions to front
         facts.moveConflictingTransactionsToFront();
-        
-        // Try multiple rounds of loose assignment
-        for (int round = 0; round < strategy.looseReviewRound; round++) {
-            List<Process> remaining = new ArrayList<>();
-            for (Process p : unassigned) {
-                if (p.conflictingProcesses.isEmpty() || 
-                    p.conflictingProcesses.stream().allMatch(c -> c.processId >= p.processId || c.computer != null)) {
-                    if (!assignLoosely(p, plan, numCores)) {
-                        remaining.add(p);
+
+        // Phase 1: Loose Assignment with order preservation
+        if (strategy.assignmentType.equals(Strategy.AssignmentType.LOOSE)) {
+            for (int round = 0; round < strategy.looseReviewRound; round++) {
+                int unassignedProcesses = 0;
+                for (Process process : facts.processes) {
+                    if (process.computer == null) {
+                        boolean couldAssign = false;
+                        if (process.conflictingProcesses.isEmpty()) {
+                            couldAssign = assignLoosely(process, plan);
+                        } else {
+                            boolean allPreviousConflictsAssigned = true;
+                            for (Process conflict : process.conflictingProcesses) {
+                                if (conflict.processId < process.processId && conflict.computer == null) {
+                                    allPreviousConflictsAssigned = false;
+                                    break;
+                                }
+                            }
+                            if (allPreviousConflictsAssigned) {
+                                couldAssign = assignLoosely(process, plan);
+                            }
+                        }
+                        if (!couldAssign) {
+                            unassignedProcesses++;
+                        }
                     }
-                } else {
-                    remaining.add(p);
+                }
+                if (unassignedProcesses == 0) break;
+            }
+
+            // Phase 2: Strict Assignment with order preservation
+            for (Process process : facts.processes) {
+                if (process.computer == null) {
+                    assignStrictly(process, plan);
                 }
             }
-            unassigned = remaining;
-            if (unassigned.isEmpty()) break;
-        }
-
-        // Phase 2: Strict Assignment with order preservation
-        for (Process p : unassigned) {
-            assignStrictly(p, plan, numCores);
+        } else {
+            // If STRICT mode or no conflicts, just assign all processes strictly
+            for (Process process : facts.processes) {
+                assignStrictly(process, plan);
+            }
         }
 
         output.horizon = facts.processes.stream().mapToLong(p -> p.executionTime).sum();
@@ -222,7 +204,7 @@ public class OptimizedDispatcherSolver implements Solver {
         output.wallTimeInMs = (System.nanoTime() - startTime) / 1_000_000.0;
         output.resultStatus = "possible";
         output.processes = facts.processes;
-        
+
         return output;
     }
 } 
