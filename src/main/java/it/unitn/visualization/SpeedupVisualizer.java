@@ -941,10 +941,15 @@ public class SpeedupVisualizer {
         }
         int yMax = (int) Math.ceil(maxSpeedup);
         if (yMax < 6) yMax = 6;
-        rangeAxis.setRange(1, yMax);
+        rangeAxis.setRange(0, yMax);
 
         domainAxis.setTickMarksVisible(true);
         rangeAxis.setTickMarksVisible(true);
+
+        // Custom tick units for x-axis
+        domainAxis.setTickUnit(new org.jfree.chart.axis.NumberTickUnit(50.0));
+        // Set axis range: x from 50 to 210 (so 200 is fully visible)
+        domainAxis.setRange(50, 210);
 
         // Custom renderer with color rotation
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
@@ -1764,7 +1769,7 @@ public class SpeedupVisualizer {
             JFreeChart chart = ChartFactory.createBarChart(
                     null,  // no title
                     "Transaction Count",
-                    "Execution Time (ms)",
+                    "Average Execution Time (ms)",
                     dataset,
                     PlotOrientation.VERTICAL,
                     true,
@@ -1798,14 +1803,14 @@ public class SpeedupVisualizer {
             // Set custom tick units for y-axis to show steps of 200
             rangeAxis.setTickUnit(new org.jfree.chart.axis.NumberTickUnit(200.0));
 
-                    // Custom renderer with colors (no shadow)
-        org.jfree.chart.renderer.category.BarRenderer renderer = new org.jfree.chart.renderer.category.BarRenderer();
-        renderer.setShadowVisible(false);
+            // Custom renderer with colors (no shadow)
+            org.jfree.chart.renderer.category.BarRenderer renderer = new org.jfree.chart.renderer.category.BarRenderer();
+            renderer.setShadowVisible(false);
 
             // Set colors for each series
             for (int i = 0; i < coreCounts.length; i++) {
                 Color color = coreColors[i];
-                    renderer.setSeriesPaint(i, color);
+                renderer.setSeriesPaint(i, color);
             }
 
             plot.setRenderer(renderer);
@@ -1816,7 +1821,6 @@ public class SpeedupVisualizer {
                 renderer.setLegendTextPaint(i, Color.BLACK);
                 renderer.setLegendShape(i, new java.awt.geom.Ellipse2D.Double(-12, -12, 24, 24));
             }
-            
 
 
             plot.setRenderer(renderer);
@@ -1830,9 +1834,8 @@ public class SpeedupVisualizer {
             chart.getLegend().setFrame(new org.jfree.chart.block.BlockBorder(Color.LIGHT_GRAY));
             chart.getLegend().setBackgroundPaint(Color.WHITE);
             chart.getLegend().setItemFont(new Font("SansSerif", Font.BOLD, LEGEND_FONT_SIZE));
-            
 
-            
+
             // Keep original dataset structure
 
             // Ensure output directory exists
@@ -1914,4 +1917,5 @@ public class SpeedupVisualizer {
                 e.printStackTrace();
             }
         }
-    }}
+    }
+}
