@@ -125,6 +125,8 @@ The first non-bold items are repetitions of the input file to distinguish the in
 - **solverStatus**: The status of the it.unitn.emvscheduling.greedy.solver, which can be either "OPTIMAL" or "FEASIBLE." (in the current declarative 
   approach the status result is always feasible)
 
+4. For automated dataset generation, processing, visualizations, you can use the following executable classed 
+   initially SpeedupDataGenerator and then SpeedupVisualizer or LatexTableGenerator.  
 
 ## Optimizing Hint and Experiments
 

@@ -19,7 +19,7 @@ public class LatexTableGenerator {
         Map<Integer, SpeedupDataReader.SpeedupData> allData = SpeedupDataReader.readSpeedupData("speedup-auto.xlsx");
         
         // Define the core sizes we want to show (8 cores as requested)
-        int[] coreSizes = {2, 7, 12, 17, 22, 27, 32};
+        int[] coreSizes = {2, 4, 8, 16, 32};
         
         // Define transaction counts and conflict percentages
         int[] transactionCounts = {50, 100, 150, 200};
@@ -29,13 +29,16 @@ public class LatexTableGenerator {
         
         // Start the table
         latex.append("\\begin{table*}[]\n");
-        latex.append("\\caption{Performance Metrics - Proposers and Attestors speedups from 2 to 32 cores}\n");
+        latex.append("\\small\n");
+        latex.append("\\setlength{\\tabcolsep}{3pt}\n");
+        latex.append("\\renewcommand{\\arraystretch}{0.9}\n");
+        latex.append("\\caption{Performance Metrics - Proposers and Attestors Speedups}\n");
         latex.append("\\label{tab:performance_metrics_greedy}\n");
         latex.append("\\begin{tabular}{|ccc|cc|cc|cc|cc|cc|cc|cc|}\n");
         latex.append("\\hline\n");
         
         // Header row with core counts
-        latex.append("\\multicolumn{3}{|c|}{\\textbf{Datasets}}");
+        latex.append("\\multicolumn{3}{|p{1.5cm}|}{\\textbf{Data}}");
         for (int core : coreSizes) {
             latex.append(" & \\multicolumn{2}{c|}{\\textbf{").append(core).append(" cores}}");
         }

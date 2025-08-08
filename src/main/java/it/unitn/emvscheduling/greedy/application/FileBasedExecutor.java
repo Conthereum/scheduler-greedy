@@ -59,7 +59,7 @@ public class FileBasedExecutor {
 
                     ExecutionFacts facts = DataGenerator.getBenchmark(randomSeed, input.get(i++), input.get(i++),
                             input.get(i++), input.get(i++), input.get(i++), input.get(i++));
-                    solver = isNewOptimalSolution? new OptimizedDispatcherSolver() : new DispatcherSolver();
+                    solver = isNewOptimalSolution ? new OptimizedDispatcherSolver() : new DispatcherSolver();
                     Strategy.ProcessSortType processSortType = Strategy.ProcessSortType.getByValue(input.get(i++));
                     int looseReviewRound = input.get(i++);
                     Strategy strategy = new Strategy(processSortType, looseReviewRound);
@@ -97,16 +97,16 @@ public class FileBasedExecutor {
     }
 
     public static String getOutputLine(Integer no, Integer groupId, Integer randomSeed, Integer numberOfWorkers,
-                                     Integer maxSolverExecutionTimeInSeconds,
-                                     Integer processCount, Integer processExecutionTimeMin,
-                                     Integer processExecutionTimeMax, Integer computerCount,
-                                     Integer conflictPercentage, Integer timeWeight, Integer processSortType,
-                                     Integer looseReviewRound,
-                                     Double solverWallTimeMs,
-                                     Integer makeSpan, Long serialTimeHorizon,
-                                     String solverStatus) {
+                                       Integer maxSolverExecutionTimeInSeconds,
+                                       Integer processCount, Integer processExecutionTimeMin,
+                                       Integer processExecutionTimeMax, Integer computerCount,
+                                       Integer conflictPercentage, Integer timeWeight, Integer processSortType,
+                                       Integer looseReviewRound,
+                                       Double solverWallTimeMs,
+                                       Integer makeSpan, Long serialTimeHorizon,
+                                       String solverStatus) {
         // Speedup is serial time divided by parallel time (makespan)
-        Double speedUpFactor = (double)serialTimeHorizon / makeSpan;
+        Double speedUpFactor = (double) serialTimeHorizon / makeSpan;
 
         String line = String.format("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.6f,%d,%.6f,%d,%s,%.6f",
                 no, groupId, randomSeed, numberOfWorkers, maxSolverExecutionTimeInSeconds, processCount,
