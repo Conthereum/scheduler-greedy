@@ -7,15 +7,20 @@ import it.unitn.emvscheduling.greedy.domain.ExecutionSettings;
 import it.unitn.emvscheduling.greedy.solver.DispatcherSolver;
 import it.unitn.emvscheduling.greedy.solver.Solver;
 import it.unitn.emvscheduling.greedy.solver.Strategy;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SpeedupDataGenerator {
     
@@ -147,12 +152,16 @@ public class SpeedupDataGenerator {
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
             }
-            
+
             // Save the workbook
             Path outputPath = Paths.get("src/main/resources/speedup-auto.xlsx");
             Files.createDirectories(outputPath.getParent());
-            
-            try (FileOutputStream fileOut = new FileOutputStream(outputPath.toFile())) {
+
+            // Open output stream with TRUNCATE_EXISTING to empty the file first (if it exists)
+            try (OutputStream fileOut = Files.newOutputStream(outputPath,
+                    StandardOpenOption.CREATE,           // Create if not exists
+                    StandardOpenOption.TRUNCATE_EXISTING, // Truncate if exists
+                    StandardOpenOption.WRITE)) {         // Open for writing
                 workbook.write(fileOut);
             }
         }
